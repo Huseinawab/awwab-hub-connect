@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, type FormEvent } from "react";
 import { Plus } from "lucide-react";
-import { DOMAINS, inDomain, activitiesAt, latestVersion, weightIssues, type DomainId, type Frequency, type Habit, type InputType } from "@/lib/awwab/config";
+import { DOMAINS, LABEL_TARGETS, inDomain, activitiesAt, latestVersion, weightIssues, type DomainId, type Frequency, type Habit, type InputType } from "@/lib/awwab/config";
 import { formatShort } from "@/lib/awwab/dates";
 import { actName, domainName, targetText, useT } from "@/lib/awwab/i18n";
 import { archiveHabit, createHabit, deleteHabit, habitHasHistory, reactivateHabit, rebalanceDomain, updateHabit, useAppState } from "@/lib/awwab/store";
