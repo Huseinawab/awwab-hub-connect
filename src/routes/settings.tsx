@@ -92,7 +92,7 @@ function HabitRow({ habit, name, label }: { habit: Habit; name: string; label: s
   if (editing) return <li className="p-3"><HabitForm habit={habit} onDone={() => setEditing(false)} /></li>;
   const history = habitHasHistory(state, habit.id);
   const remove = () => {
-    if (history || habit.isSystem) setConfirm(true);
+    if (history) setConfirm(true);
     else if (window.confirm(t("habits.confirmDelete"))) deleteHabit(habit.id);
   };
   return (
@@ -104,7 +104,7 @@ function HabitRow({ habit, name, label }: { habit: Habit; name: string; label: s
         </div>
         <div className="flex gap-1">
           <button className="btn btn-ghost !py-1 text-sm" onClick={() => setEditing(true)}>{t("habits.edit")}</button>
-          <button className="btn btn-ghost !py-1 text-sm" onClick={remove}>{history || habit.isSystem ? t("habits.archiveShort") : t("habits.delete")}</button>
+          <button className="btn btn-ghost !py-1 text-sm" onClick={remove}>{t("habits.delete")}</button>
         </div>
       </div>
       {confirm && (
@@ -113,6 +113,7 @@ function HabitRow({ habit, name, label }: { habit: Habit; name: string; label: s
           <div className="flex gap-2">
             <button className="btn btn-ghost !py-1" onClick={() => setConfirm(false)}>{t("common.cancel")}</button>
             <button className="btn btn-primary !py-1" onClick={() => { archiveHabit(habit.id, today); setConfirm(false); }}>{t("habits.archiveShort")}</button>
+            <button className="btn btn-ghost !py-1 text-destructive" onClick={() => { deleteHabit(habit.id, true); setConfirm(false); }}>{t("habits.delete")}</button>
           </div>
         </div>
       )}
@@ -128,19 +129,20 @@ function HabitForm({ habit, onDone }: { habit?: Habit; onDone: () => void }) {
   const initialName = habit ? actName(habit, t) : "";
   const [name, setName] = useState(initialName);
   const [domain, setDomain] = useState<DomainId>(v?.domain ?? "health");
-  const [inputType, setInputType] = useState<InputType>(v?.inputType ?? "checklist");
-  const [target, setTarget] = useState(String(v?.target ?? 1));
-  const [unit, setUnit] = useState(v?.unit ?? "");
+  const label = habit?.isSystem && v?.inputType === "checklist" && v.frequency === "day" ? LABEL_TARGETS[habit.id] : undefined;
+  const [inputType, setInputType] = useState<InputType>(label ? "quantitative" : (v?.inputType ?? "checklist"));
+  const [target, setTarget] = useState(String(label?.target ?? v?.target ?? 1));
+  const [unit, setUnit] = useState(label?.unit ?? (v?.unit === "day" ? "" : (v?.unit ?? "")));
   const [frequency, setFrequency] = useState<Frequency>(v?.frequency ?? "day");
   const [weight, setWeight] = useState(String(v?.weight ?? 10));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const checkDaily = inputType === "checklist" && frequency === "day";
+  const checkDaily = inputType === "checklist" && frequency === "day" && Number(target) <= 1;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (busy) return;
-    const tn = checkDaily ? 1 : Number(target);
+    const tn = Number(target);
     const wn = Number(weight);
     if (!name.trim()) return setError(t("habits.err.name"));
     if (!Number.isFinite(tn) || tn <= 0) return setError(t("habits.err.target"));
@@ -171,11 +173,9 @@ function HabitForm({ habit, onDone }: { habit?: Habit; onDone: () => void }) {
         <select className="field" value={frequency} onChange={(e) => setFrequency(e.target.value as Frequency)}>
           <option value="day">{t("freq.day")}</option><option value="week">{t("freq.week")}</option><option value="month">{t("freq.month")}</option>
         </select></label>
-      {!checkDaily && (
-        <label><span className="mb-1 block text-sm font-bold">{t("habits.target")}</span>
-          <input className="field" type="number" min={0} step="any" value={target} onChange={(e) => setTarget(e.target.value)} /></label>
-      )}
-      {inputType === "quantitative" && (
+      <label><span className="mb-1 block text-sm font-bold">{t("habits.target")}</span>
+        <input className="field" type="number" min={0} step="any" value={target} onChange={(e) => setTarget(e.target.value)} /></label>
+      {(inputType === "quantitative" || !checkDaily) && (
         <label><span className="mb-1 block text-sm font-bold">{t("habits.unit")}</span>
           <input className="field" placeholder={t("habits.unitPh")} value={unit} onChange={(e) => setUnit(e.target.value)} /></label>
       )}
