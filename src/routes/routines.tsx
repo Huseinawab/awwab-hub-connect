@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { addDays, datesBetween, formatShort, fromKey, periodFor } from "@/lib/awwab/dates";
 import { locale, useLang, useT } from "@/lib/awwab/i18n";
 import { PLANNER_CATEGORIES } from "@/lib/awwab/planner";
-import { conflicts, isOff, occurrencesIn, scheduledMinutes, type Occurrence } from "@/lib/awwab/routines";
+import { WEEKDAYS, conflicts, isOff, occurrencesIn, scheduledMinutes, type Occurrence } from "@/lib/awwab/routines";
 import {
   addOccurrencesToPlanner, archiveRoutine, deleteRoutine, pauseRoutine, resumeRoutine, useAppState,
   type PlannerCategory, type Routine, type RoutineStatus,
@@ -36,7 +36,7 @@ function RoutinesPage() {
   const [cat, setCat] = useState<PlannerCategory | "ALL">("ALL");
   const [status, setStatus] = useState<RoutineStatus>("ACTIVE");
 
-  const lib = s.routines.filter((r) => r.status === status && (cat === "ALL" || r.category === cat) && (!q || `${r.title} ${r.location} ${r.description}`.toLowerCase().includes(q.toLowerCase())));
+  const lib = s.routines.filter((r) => r.status === status && (cat === "ALL" || r.category === cat) && (!q || `${r.title} ${r.location} ${r.description} ${Object.values(r.weekdayDetails ?? {}).map((x) => `${x?.title ?? ""} ${x?.description ?? ""}`).join(" ")}`.toLowerCase().includes(q.toLowerCase())));
   const toPlanner = () => {
     const n = addOccurrencesToPlanner(occ.filter((o) => o.routine.plannerEnabled && !isOff(o)));
     toast(n ? t("rt.addedPlanner", { n }) : t("rt.nothingNew"));
@@ -76,7 +76,8 @@ function RoutinesPage() {
                   <div className="space-y-1 px-2 pb-2 pt-1">
                     {list.length ? list.map((o) => (
                       <button key={o.key} onClick={() => setSel(o)} className={`block w-full rounded-sm bg-sage-soft px-2 py-1 text-left text-xs ${isOff(o) ? "line-through opacity-50" : ""}`}>
-                        <span className="font-bold tabular-nums">{o.startTime ?? ""}</span> <span className="font-semibold">{o.routine.title}</span>
+                         <span className="font-bold tabular-nums">{o.startTime ?? ""}</span> <span className="font-semibold break-words">{o.title}</span>
+                         {o.description && <span className="mt-1 block whitespace-pre-wrap break-words text-muted-foreground">{o.description}</span>}
                       </button>
                     )) : <p className="px-1 py-1 text-xs text-muted-foreground">—</p>}
                   </div>
@@ -116,7 +117,8 @@ function RoutinesPage() {
               <h3 className="text-caption mb-2"><span className="planner-cat" data-cat={c}>{t(`pl.cat.${c}`)}</span></h3>
               <ul className="surface divide-y">
                 {lib.filter((r) => r.category === c).map((r) => (
-                  <li key={r.id} className="flex items-center gap-3 px-5 py-3">
+                   <li key={r.id} className="px-5 py-3">
+                     <div className="flex items-center gap-3">
                     <button className="min-w-0 flex-1 text-left" onClick={() => setForm({ routine: r, occ: null })}>
                       <p className="truncate font-semibold">{r.title}</p>
                       <p className="text-xs text-muted-foreground">
@@ -135,6 +137,18 @@ function RoutinesPage() {
                         <DropdownMenuItem className="text-destructive" onSelect={() => { if (window.confirm(t("rt.confirmDelete"))) deleteRoutine(r.id); }}>{t("rt.delete")}</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                     </div>
+                     {r.description && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">{r.description}</p>}
+                     <dl className="mt-2 space-y-2">
+                       {WEEKDAYS.filter((n) => r.frequency === "DAILY" || ((r.frequency === "WEEKLY" || r.frequency === "CUSTOM") && r.daysOfWeek.includes(n))).map((n) => {
+                         const detail = r.weekdayDetails?.[n];
+                         if (!detail?.title && !detail?.description) return null;
+                         return <div key={n} className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-2 border-t pt-2">
+                           <dt className="text-xs font-bold text-muted-foreground">{t(`wd.${n}`)}</dt>
+                           <dd className="min-w-0 text-sm">{detail.title && <p className="break-words font-semibold">{detail.title}</p>}{detail.description && <p className="whitespace-pre-wrap break-words text-muted-foreground">{detail.description}</p>}</dd>
+                         </div>;
+                       })}
+                     </dl>
                   </li>
                 ))}
               </ul>

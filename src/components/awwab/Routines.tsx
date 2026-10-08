@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { MapPin, Repeat } from "lucide-react";
+import { RoutineDayFields } from "./RoutineDayFields";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { actName, useT, type T } from "@/lib/awwab/i18n";
 import { addDays, formatLong, formatShort } from "@/lib/awwab/dates";
 import { PLANNER_CATEGORIES, linkableActivities } from "@/lib/awwab/planner";
-import { ROUTINE_TYPES, WEEKDAYS, isOff, occurrencesIn, type Occurrence } from "@/lib/awwab/routines";
+import { ROUTINE_TYPES, WEEKDAYS, dow, isOff, occurrencesIn, type Occurrence } from "@/lib/awwab/routines";
 import {
   clearRoutineException, saveRoutine, setRoutineException, splitRoutine, useAppState,
   type PlannerCategory, type Routine, type RoutineFrequency, type RoutineInput, type RoutineType,
@@ -26,7 +27,7 @@ export function describeRoutine(r: Routine, t: T) {
 
 type Draft = RoutineInput;
 const blank = (today: string): Draft => ({
-  title: "", description: "", category: "PERSONAL", type: "SCHEDULE", frequency: "WEEKLY", daysOfWeek: [], intervalWeeks: 1, dayOfMonth: null,
+  title: "", description: "", weekdayDetails: {}, category: "PERSONAL", type: "SCHEDULE", frequency: "WEEKLY", daysOfWeek: [], intervalWeeks: 1, dayOfMonth: null,
   startTime: null, endTime: null, startDate: today, endDate: null, location: "", plannerEnabled: false, calendarEnabled: true,
   activityId: null, goalId: null, projectId: null, milestoneId: null,
 });
@@ -42,11 +43,13 @@ export function RoutineForm({ open, onOpenChange, routine, occurrence, today }: 
   const [d, setD] = useState<Draft>(blank(today));
   const [scope, setScope] = useState<Scope>("future");
   const [err, setErr] = useState("");
+  const [oneDetail, setOneDetail] = useState({ title: "", description: "" });
   useEffect(() => {
     if (!open) return;
     setD(routine ? { ...routine } : blank(today));
     setScope(occurrence ? "one" : "all");
     setErr("");
+    setOneDetail({ title: occurrence?.exception?.detailTitle ?? routine?.weekdayDetails?.[dow(occurrence?.originalDate ?? today)]?.title ?? "", description: occurrence?.description ?? "" });
   }, [open, routine, occurrence, today]);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
   const acts = useMemo(() => linkableActivities(s.habits, today), [s.habits, today]);
@@ -54,14 +57,15 @@ export function RoutineForm({ open, onOpenChange, routine, occurrence, today }: 
   const projects = s.projects.filter((p) => !d.goalId || p.goalId === d.goalId);
   const milestones = s.milestones.filter((m) => !d.projectId || m.projectId === d.projectId);
   const needsDays = d.frequency === "WEEKLY" || d.frequency === "CUSTOM";
-  const toggleDay = (n: number) => set("daysOfWeek", (d.daysOfWeek ?? []).includes(n) ? d.daysOfWeek!.filter((x) => x !== n) : [...(d.daysOfWeek ?? []), n]);
+  const toggleDay = (n: number) => set("daysOfWeek", (d.daysOfWeek ?? []).includes(n) ? (d.daysOfWeek ?? []).filter((x) => x !== n) : [...(d.daysOfWeek ?? []), n]);
+  const detailDays = d.frequency === "DAILY" ? WEEKDAYS : needsDays ? WEEKDAYS.filter((n) => d.daysOfWeek?.includes(n)) : [];
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (needsDays && !(d.daysOfWeek ?? []).length) { setErr(t("rt.f.needDays")); return; }
     const clean = { ...d, startTime: d.startTime || null, endTime: d.endTime || null, endDate: d.endDate || null };
     if (routine && occurrence && scope === "one") {
-      setRoutineException({ routineId: routine.id, occurrenceDate: occurrence.originalDate, type: "RESCHEDULED", newDate: occurrence.date, newStartTime: clean.startTime, newEndTime: clean.endTime });
+      setRoutineException({ ...occurrence.exception, routineId: routine.id, occurrenceDate: occurrence.originalDate, type: "RESCHEDULED", newDate: occurrence.date, newStartTime: clean.startTime, newEndTime: clean.endTime, detailTitle: oneDetail.title, detailDescription: oneDetail.description });
     } else if (routine && scope === "future") {
       const from = occurrence?.originalDate ?? today;
       splitRoutine(routine.id, from, { ...clean, startDate: from, endDate: clean.endDate && clean.endDate >= from ? clean.endDate : null }, addDays(from, -1));
@@ -88,11 +92,15 @@ export function RoutineForm({ open, onOpenChange, routine, occurrence, today }: 
             </fieldset>
           )}
           {scope === "one" ? (
+            <div className="space-y-3">
+            <label className="block"><span className="mb-1 block text-sm font-bold">{t("rt.f.dayTitle")}</span><input className="field" value={oneDetail.title} onChange={(e) => setOneDetail({ ...oneDetail, title: e.target.value })} /></label>
+            <label className="block"><span className="mb-1 block text-sm font-bold">{t("rt.f.dayDescription")}</span><textarea className="field min-h-28" value={oneDetail.description} onChange={(e) => setOneDetail({ ...oneDetail, description: e.target.value })} /></label>
             <div className="grid grid-cols-2 gap-3">
               <label className="block"><span className="mb-1 block text-sm font-bold">{t("pl.f.start")}</span>
                 <input className="field" type="time" value={d.startTime ?? ""} onChange={(e) => set("startTime", e.target.value || null)} /></label>
               <label className="block"><span className="mb-1 block text-sm font-bold">{t("pl.f.end")}</span>
                 <input className="field" type="time" value={d.endTime ?? ""} onChange={(e) => set("endTime", e.target.value || null)} /></label>
+            </div>
             </div>
           ) : (<>
           <label className="block"><span className="mb-1 block text-sm font-bold">{t("rt.f.title")}</span>
@@ -148,11 +156,12 @@ export function RoutineForm({ open, onOpenChange, routine, occurrence, today }: 
           </div>
           <label className="block"><span className="mb-1 block text-sm font-bold">{t("rt.f.location")}</span>
             <input className="field" value={d.location ?? ""} onChange={(e) => set("location", e.target.value)} /></label>
-          <label className="block"><span className="mb-1 block text-sm font-bold">{t("pl.f.desc")}</span>
+          <label className="block"><span className="mb-1 block text-sm font-bold">{t("rt.f.generalDescription")}</span>
             <textarea className="field min-h-16" value={d.description ?? ""} onChange={(e) => set("description", e.target.value)} /></label>
+          <RoutineDayFields days={detailDays} details={d.weekdayDetails ?? {}} onChange={(value) => set("weekdayDetails", value)} />
           <div className="flex flex-wrap gap-4 text-sm font-semibold">
             <label className="flex items-center gap-2"><input type="checkbox" checked={!!d.calendarEnabled} onChange={(e) => set("calendarEnabled", e.target.checked)} />{t("rt.f.calendar")}</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={!!d.plannerEnabled} onChange={(e) => set("plannerEnabled", e.target.checked)} />{t("rt.f.planner")}</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={!!d.plannerEnabled} onChange={(e) => set("plannerEnabled", e.target.checked)} />{t("rt.f.plannerOptional")}</label>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block"><span className="mb-1 block text-sm font-bold">{t("pl.f.activity")}</span>
@@ -201,7 +210,7 @@ export function OccurrenceDialog({ occ, onOpenChange, onEdit }: { occ: Occurrenc
     <Dialog open={!!occ} onOpenChange={onOpenChange}>
       <DialogContent className="bg-cream sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-h2">{r.title}</DialogTitle>
+          <DialogTitle className="text-h2">{occ.title}</DialogTitle>
           <DialogDescription>
             {formatLong(occ.date)}{occ.startTime ? ` · ${occ.startTime}${occ.endTime ? `–${occ.endTime}` : ""}` : ""}
             {occ.date !== occ.originalDate ? ` · ${t("rt.moved", { d: formatShort(occ.originalDate) })}` : ""}
@@ -209,9 +218,10 @@ export function OccurrenceDialog({ occ, onOpenChange, onEdit }: { occ: Occurrenc
         </DialogHeader>
         <p className="text-sm"><span className="planner-cat" data-cat={r.category}>{t(`pl.cat.${r.category}`)}</span> · {describeRoutine(r, t)}</p>
         {r.location && <p className="flex items-center gap-1 text-sm text-muted-foreground"><MapPin className="h-4 w-4" />{r.location}</p>}
-        {isOff(occ) && <p className="text-sm font-bold">{occ.exception!.type === "SKIPPED" ? t("rt.skipped") : t("rt.cancelled")}</p>}
+        {occ.description && <p className="whitespace-pre-wrap break-words text-sm">{occ.description}</p>}
+        {isOff(occ) && <p className="text-sm font-bold">{occ.exception?.type === "SKIPPED" ? t("rt.skipped") : t("rt.cancelled")}</p>}
         {moving ? (
-          <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); setRoutineException({ routineId: r.id, occurrenceDate: occ.originalDate, type: "RESCHEDULED", newDate: nd.date, newStartTime: nd.start || null, newEndTime: nd.end || null }); close(); }}>
+          <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); setRoutineException({ ...occ.exception, routineId: r.id, occurrenceDate: occ.originalDate, type: "RESCHEDULED", newDate: nd.date, newStartTime: nd.start || null, newEndTime: nd.end || null }); close(); }}>
             <label className="block"><span className="mb-1 block text-sm font-bold">{t("rt.newDate")}</span><input className="field" type="date" required value={nd.date} onChange={(e) => setNd({ ...nd, date: e.target.value })} /></label>
             <div className="grid grid-cols-2 gap-3">
               <input className="field" type="time" aria-label={t("pl.f.start")} value={nd.start} onChange={(e) => setNd({ ...nd, start: e.target.value })} />
@@ -244,11 +254,12 @@ export function OccurrenceRow({ o, onClick }: { o: Occurrence; onClick: () => vo
     <button onClick={onClick} className={`flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-beige/40 ${off ? "opacity-60" : ""}`}>
       <span className="w-24 shrink-0 text-sm font-bold tabular-nums">{o.startTime ? `${o.startTime}${o.endTime ? `–${o.endTime}` : ""}` : "—"}</span>
       <span className="min-w-0 flex-1">
-        <span className={`block truncate font-semibold ${off ? "line-through" : ""}`}>{o.routine.title}</span>
+        <span className={`block break-words font-semibold ${off ? "line-through" : ""}`}>{o.title}</span>
+        {o.description && <span className="mt-1 block whitespace-pre-wrap break-words text-sm text-muted-foreground">{o.description}</span>}
         <span className="text-xs text-muted-foreground">
           <span className="planner-cat" data-cat={o.routine.category}>{t(`pl.cat.${o.routine.category}`)}</span>
           {o.routine.location ? ` · ${o.routine.location}` : ""}
-          {off ? ` · ${o.exception!.type === "SKIPPED" ? t("rt.skipped") : t("rt.cancelled")}` : o.date !== o.originalDate ? ` · ${t("rt.moved", { d: formatShort(o.originalDate) })}` : ""}
+          {off ? ` · ${o.exception?.type === "SKIPPED" ? t("rt.skipped") : t("rt.cancelled")}` : o.date !== o.originalDate ? ` · ${t("rt.moved", { d: formatShort(o.originalDate) })}` : ""}
         </span>
       </span>
     </button>
