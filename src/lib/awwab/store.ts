@@ -149,10 +149,12 @@ export interface AppState {
   plannerItems: PlannerItem[];
   routines: Routine[];
   routineExceptions: RoutineException[];
+  /** Local YYYY-MM-DD of the last Daily Opening seen; never affects scores. */
+  lastOpeningDate: string | null;
 }
 
 const KEY = "awwab:v1";
-const EMPTY: AppState = { version: 1, entries: {}, goals: [], projects: [], milestones: [], reviews: [], habits: systemHabits(), plannerItems: [], routines: [], routineExceptions: [] };
+const EMPTY: AppState = { version: 1, entries: {}, goals: [], projects: [], milestones: [], reviews: [], habits: systemHabits(), plannerItems: [], routines: [], routineExceptions: [], lastOpeningDate: null };
 
 const arr = <X>(x: unknown): X[] => (Array.isArray(x) ? (x as X[]) : []);
 const validHabit = (h: Habit) => !!h && typeof h.id === "string" && Array.isArray(h.versions) && h.versions.length > 0 && h.versions.every((v) => isDomainId(v.domain));
@@ -175,6 +177,7 @@ function parseState(p: any): AppState {
     plannerItems: arr<PlannerItem>(p?.plannerItems).filter((x) => !!x && typeof x.id === "string" && typeof x.title === "string"),
     routines: arr<Routine>(p?.routines).filter((x) => !!x && typeof x.id === "string" && typeof x.startDate === "string").map((r) => ({ ...r, daysOfWeek: arr<number>(r.daysOfWeek), pauses: arr(r.pauses), intervalWeeks: r.intervalWeeks || 1 })),
     routineExceptions: arr<RoutineException>(p?.routineExceptions).filter((x) => !!x && typeof x.routineId === "string"),
+    lastOpeningDate: typeof p?.lastOpeningDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.lastOpeningDate) ? p.lastOpeningDate : null,
   };
 }
 
@@ -524,4 +527,11 @@ export function addOccurrencesToPlanner(occ: { routine: Routine; originalDate: s
   }));
   if (fresh.length) commit({ ...s, plannerItems: [...s.plannerItems, ...fresh] });
   return fresh.length;
+}
+
+// ---------- Daily Opening ----------
+export function markOpeningSeen(date: string) {
+  const s = getState();
+  if (s.lastOpeningDate === date) return;
+  commit({ ...s, lastOpeningDate: date });
 }
