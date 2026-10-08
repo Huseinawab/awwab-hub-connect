@@ -1,0 +1,106 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { addDays, datesBetween, formatLong, formatShort, fromKey, nextPeriod, periodFor, previousPeriod, startOfWeek } from "@/lib/awwab/dates";
+import { datedItems, upcoming, type DatedItem } from "@/lib/awwab/goals";
+import { useAppState } from "@/lib/awwab/store";
+import { meta, useToday } from "@/lib/awwab/useToday";
+import { PageHeader, Stepper } from "@/components/awwab/ui";
+import { useLang, useT } from "@/lib/awwab/i18n";
+
+export const Route = createFileRoute("/calendar")({
+  head: () => meta("Calendar — AWWAB", "Goal deadlines, project dates and milestones in one monthly view."),
+  component: CalendarPage,
+});
+
+const TYPE_CLS: Record<DatedItem["type"], string> = { goal: "bg-rose-soft", project: "bg-orange-soft", milestone: "bg-beige" };
+
+function CalendarPage() {
+  const today = useToday();
+  const t = useT();
+  useLang();
+  const state = useAppState();
+  const [anchor, setAnchor] = useState(today);
+  const [selected, setSelected] = useState<DatedItem | null>(null);
+  const month = periodFor("month", anchor);
+  const items = useMemo(() => datedItems(state), [state]);
+  const gridStart = startOfWeek(month.start);
+  const gridEnd = addDays(startOfWeek(month.end), 6);
+  const days = datesBetween(gridStart, gridEnd);
+  const byDate = (d: string) => items.filter((i) => i.date === d);
+  const next = upcoming(state, today, 6);
+
+  return (
+    <div>
+      <PageHeader eyebrow={t("nav.calendar")} title={month.label} subtitle={t("cal.subtitle")}>
+        <Stepper label={month.label} onPrev={() => setAnchor(previousPeriod(month).start)} onNext={() => setAnchor(nextPeriod(month).start)}>
+          <button className="btn btn-ghost" onClick={() => setAnchor(today)}>{t("daily.today")}</button>
+        </Stepper>
+      </PageHeader>
+
+      <div className="overflow-hidden rounded-lg border bg-cream">
+        <div className="grid grid-cols-7 border-b text-center text-caption">
+          {[0, 1, 2, 3, 4, 5, 6].map((d) => <div key={d} className="py-2">{t(`wd.${d}`)}</div>)}
+        </div>
+        <div className="grid grid-cols-7">
+          {days.map((d) => {
+            const inMonth = d >= month.start && d <= month.end;
+            const list = byDate(d);
+            return (
+              <div key={d} className={`min-h-20 border-b border-r p-1 sm:min-h-24 sm:p-1.5 ${inMonth ? "" : "bg-background/70 text-muted-foreground"}`}>
+                <span className={`inline-grid h-6 w-6 place-items-center rounded-full text-xs font-bold ${d === today ? "bg-primary text-primary-foreground" : ""}`}>{fromKey(d).getDate()}</span>
+                <div className="mt-1 space-y-1">
+                  {list.slice(0, 3).map((i) => (
+                    <button key={i.id} onClick={() => setSelected(i)} className={`block w-full truncate rounded-sm px-1 py-0.5 text-left text-[11px] font-semibold ${TYPE_CLS[i.type]} ${i.done ? "line-through opacity-60" : ""}`}>
+                      {i.title}
+                    </button>
+                  ))}
+                  {list.length > 3 && <span className="text-[11px] text-muted-foreground">+{list.length - 3}</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-rose-soft" /> {t("type.goal")}</span>
+        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-orange-soft" /> {t("type.project")}</span>
+        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-beige" /> {t("type.milestone")}</span>
+      </div>
+
+      {selected && (
+        <div className="surface mt-6 p-5">
+          <p className="text-caption">{t(`type.${selected.type}`)}</p>
+          <h2 className="text-h2">{selected.title}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {formatLong(selected.date)}{selected.parent ? t("cal.in", { p: selected.parent }) : ""} · {t(`status.${selected.status}`)}
+            {!selected.done && selected.date < today ? ` · ${t("common.overdue")}` : ""}
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Link to="/goals" className="btn btn-soft">{t("cal.open")}</Link>
+            <button className="btn btn-ghost" onClick={() => setSelected(null)}>{t("common.close")}</button>
+          </div>
+        </div>
+      )}
+
+      <section className="mt-8">
+        <h2 className="text-h2 mb-3">{t("cal.upcoming")}</h2>
+        {next.length ? (
+          <ul className="surface divide-y">
+            {next.map((i) => (
+              <li key={i.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 px-5 py-3">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{i.title}</p>
+                  <p className="text-xs text-muted-foreground">{t(`type.${i.type}`)}{i.parent ? ` · ${i.parent}` : ""}</p>
+                </div>
+                <span className="text-sm text-muted-foreground">{formatShort(i.date)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">{t("cal.nothing")}</p>
+        )}
+      </section>
+    </div>
+  );
+}
