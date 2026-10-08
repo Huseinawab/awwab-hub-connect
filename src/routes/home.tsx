@@ -52,6 +52,7 @@ function HomePage() {
       <LifeProgress entries={state.entries} habits={state.habits} today={today} />
 
       <TodayPlan today={today} />
+      <TodaySchedule today={today} />
 
       {!hasAnyData && (
         <Link to="/daily" className="btn btn-primary">{t("home.openTracker")}</Link>
