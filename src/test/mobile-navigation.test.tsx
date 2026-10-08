@@ -28,7 +28,7 @@ describe("Mobile navigation", () => {
     const router = await openNavigation();
     fireEvent.click(screen.getByRole("button", { name: "Lainnya" }));
     const more = await screen.findByRole("navigation", { name: "Lainnya" });
-    expect(within(more).getAllByRole("link").map((link) => link.textContent)).toEqual(["Planner", "Mingguan", "Wawasan", "Review", "Pengaturan"]);
+    expect(within(more).getAllByRole("link").map((link) => link.textContent)).toEqual(["Planner", "Rutinitas", "Mingguan", "Wawasan", "Review", "Pengaturan"]);
     fireEvent.click(within(more).getByRole("link", { name: "Planner" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/planner"));
     await waitFor(() => expect(screen.queryByRole("navigation", { name: "Lainnya" })).not.toBeInTheDocument());
