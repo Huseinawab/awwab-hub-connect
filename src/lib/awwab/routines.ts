@@ -7,6 +7,15 @@ export const ROUTINE_TYPES: RoutineType[] = ["SCHEDULE", "EVENT", "HABIT", "MEAL
 export const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
 export const dow = (k: string) => (fromKey(k).getDay() + 6) % 7; // Mon=0
 
+export function routineDetailsOn(r: Routine, date: string) {
+  const detail = r.weekdayDetails?.[dow(date)];
+  const dayTitle = detail?.title?.trim() ?? "";
+  return {
+    title: dayTitle ? `${r.title} — ${dayTitle}` : r.title,
+    description: detail?.description?.trim() || r.description || "",
+  };
+}
+
 /** Does the template (ignoring exceptions) produce an occurrence on `date`? */
 export function occursOn(r: Routine, date: string): boolean {
   if (date < r.startDate) return false;
@@ -31,6 +40,8 @@ export function occursOn(r: Routine, date: string): boolean {
 
 export interface Occurrence {
   key: string;
+  title: string;
+  description: string;
   routine: Routine;
   originalDate: string; // date the template scheduled
   date: string; // actual date (differs when rescheduled)
@@ -53,6 +64,8 @@ export function occurrencesIn(routines: Routine[], exceptions: RoutineException[
       if (date < start || date > end) continue;
       out.push({
         key: `${r.id}|${d}`, routine: r, originalDate: d, date, exception: e,
+        title: e?.detailTitle !== undefined ? (e.detailTitle.trim() ? `${r.title} — ${e.detailTitle.trim()}` : r.title) : routineDetailsOn(r, d).title,
+        description: e?.detailDescription ?? routineDetailsOn(r, d).description,
         startTime: e?.type === "RESCHEDULED" ? (e.newStartTime ?? r.startTime) : r.startTime,
         endTime: e?.type === "RESCHEDULED" ? (e.newEndTime ?? r.endTime) : r.endTime,
       });

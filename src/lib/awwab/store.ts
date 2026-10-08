@@ -95,6 +95,10 @@ export interface PlannerItem {
 export type RoutineType = "EVENT" | "HABIT" | "SCHEDULE" | "MEAL" | "STUDY" | "RESPONSIBILITY" | "OTHER";
 export type RoutineFrequency = "DAILY" | "WEEKLY" | "MONTHLY" | "CUSTOM" | "ONCE";
 export type RoutineStatus = "ACTIVE" | "PAUSED" | "ARCHIVED";
+export interface RoutineDayDetail {
+  title: string;
+  description: string;
+}
 /** Recurring TEMPLATE. Occurrences are derived (routines.ts), never stored; exceptions override single dates. */
 export interface Routine {
   id: string;
@@ -102,6 +106,7 @@ export interface Routine {
   description: string;
   category: PlannerCategory;
   type: RoutineType;
+  weekdayDetails?: Partial<Record<number, RoutineDayDetail>>; // Mon=0..Sun=6; missing fields use general details
   frequency: RoutineFrequency;
   daysOfWeek: number[]; // Mon=0..Sun=6 (WEEKLY/CUSTOM)
   intervalWeeks: number; // WEEKLY: every N weeks
@@ -133,6 +138,8 @@ export interface RoutineException {
   newDate: string | null;
   newStartTime: string | null;
   newEndTime: string | null;
+  detailTitle?: string;
+  detailDescription?: string;
   note: string;
   createdAt: string;
   updatedAt: string;
@@ -457,7 +464,7 @@ export function saveRoutine(input: RoutineInput) {
     return input.id;
   }
   const r: Routine = {
-    description: "", category: "PERSONAL", type: "SCHEDULE", frequency: "WEEKLY", daysOfWeek: [], intervalWeeks: 1, dayOfMonth: null,
+    description: "", weekdayDetails: {}, category: "PERSONAL", type: "SCHEDULE", frequency: "WEEKLY", daysOfWeek: [], intervalWeeks: 1, dayOfMonth: null,
     startTime: null, endTime: null, endDate: null, location: "", status: "ACTIVE", pausedFrom: null, pauses: [],
     plannerEnabled: false, calendarEnabled: true, activityId: null, goalId: null, projectId: null, milestoneId: null, archivedAt: null,
     ...input, id: uid(), title, createdAt: now(), updatedAt: now(),
@@ -516,11 +523,11 @@ export function clearRoutineException(routineId: string, occurrenceDate: string)
 }
 
 /** Creates planner items for the given occurrences, skipping ones already generated. Intention only. */
-export function addOccurrencesToPlanner(occ: { routine: Routine; originalDate: string; date: string; startTime: string | null; endTime: string | null }[]) {
+export function addOccurrencesToPlanner(occ: { routine: Routine; title?: string; description?: string; originalDate: string; date: string; startTime: string | null; endTime: string | null }[]) {
   const s = getState();
   const have = new Set(s.plannerItems.filter((i) => i.routineId).map((i) => `${i.routineId}|${i.occurrenceDate}`));
   const fresh: PlannerItem[] = occ.filter((o) => !have.has(`${o.routine.id}|${o.originalDate}`)).map((o) => ({
-    id: uid(), title: o.routine.title, description: o.routine.description, type: "EVENT", category: o.routine.category,
+    id: uid(), title: o.title ?? o.routine.title, description: o.description ?? o.routine.description, type: "EVENT", category: o.routine.category,
     date: o.date, startTime: o.startTime, endTime: o.endTime, status: "PLANNED",
     goalId: o.routine.goalId, projectId: o.routine.projectId, milestoneId: o.routine.milestoneId, activityId: o.routine.activityId,
     routineId: o.routine.id, occurrenceDate: o.originalDate, createdAt: now(), updatedAt: now(), completedAt: null,
