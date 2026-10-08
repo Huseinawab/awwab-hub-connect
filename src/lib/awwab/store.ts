@@ -88,6 +88,54 @@ export interface PlannerItem {
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
+  routineId?: string | null; // set when generated from a routine
+  occurrenceDate?: string | null; // the routine occurrence this item came from
+}
+
+export type RoutineType = "EVENT" | "HABIT" | "SCHEDULE" | "MEAL" | "STUDY" | "RESPONSIBILITY" | "OTHER";
+export type RoutineFrequency = "DAILY" | "WEEKLY" | "MONTHLY" | "CUSTOM" | "ONCE";
+export type RoutineStatus = "ACTIVE" | "PAUSED" | "ARCHIVED";
+/** Recurring TEMPLATE. Occurrences are derived (routines.ts), never stored; exceptions override single dates. */
+export interface Routine {
+  id: string;
+  title: string;
+  description: string;
+  category: PlannerCategory;
+  type: RoutineType;
+  frequency: RoutineFrequency;
+  daysOfWeek: number[]; // Mon=0..Sun=6 (WEEKLY/CUSTOM)
+  intervalWeeks: number; // WEEKLY: every N weeks
+  dayOfMonth: number | null; // MONTHLY
+  startTime: string | null;
+  endTime: string | null;
+  startDate: string;
+  endDate: string | null;
+  location: string;
+  status: RoutineStatus;
+  pausedFrom: string | null; // while PAUSED
+  pauses: { from: string; to: string }[]; // past pause windows (history)
+  plannerEnabled: boolean;
+  calendarEnabled: boolean;
+  activityId: string | null;
+  goalId: string | null;
+  projectId: string | null;
+  milestoneId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null; // date key: no occurrences on/after
+}
+export type RoutineExceptionType = "SKIPPED" | "RESCHEDULED" | "CANCELLED";
+export interface RoutineException {
+  id: string;
+  routineId: string;
+  occurrenceDate: string;
+  type: RoutineExceptionType;
+  newDate: string | null;
+  newStartTime: string | null;
+  newEndTime: string | null;
+  note: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AppState {
@@ -99,10 +147,12 @@ export interface AppState {
   reviews: Review[];
   habits: Habit[];
   plannerItems: PlannerItem[];
+  routines: Routine[];
+  routineExceptions: RoutineException[];
 }
 
 const KEY = "awwab:v1";
-const EMPTY: AppState = { version: 1, entries: {}, goals: [], projects: [], milestones: [], reviews: [], habits: systemHabits(), plannerItems: [] };
+const EMPTY: AppState = { version: 1, entries: {}, goals: [], projects: [], milestones: [], reviews: [], habits: systemHabits(), plannerItems: [], routines: [], routineExceptions: [] };
 
 const arr = <X>(x: unknown): X[] => (Array.isArray(x) ? (x as X[]) : []);
 const validHabit = (h: Habit) => !!h && typeof h.id === "string" && Array.isArray(h.versions) && h.versions.length > 0 && h.versions.every((v) => isDomainId(v.domain));
@@ -122,6 +172,8 @@ function parseState(p: any): AppState {
     reviews: arr(p?.reviews),
     habits: habits.length ? habits : systemHabits(),
     plannerItems: arr<PlannerItem>(p?.plannerItems).filter((x) => !!x && typeof x.id === "string" && typeof x.title === "string"),
+    routines: arr<Routine>(p?.routines).filter((x) => !!x && typeof x.id === "string" && typeof x.startDate === "string").map((r) => ({ ...r, daysOfWeek: arr<number>(r.daysOfWeek), pauses: arr(r.pauses), intervalWeeks: r.intervalWeeks || 1 })),
+    routineExceptions: arr<RoutineException>(p?.routineExceptions).filter((x) => !!x && typeof x.routineId === "string"),
   };
 }
 
@@ -138,7 +190,7 @@ function load() {
 
 /** True when the device holds any user-entered data. */
 export const hasLocalData = (s: AppState) =>
-  Object.keys(s.entries).length > 0 || s.goals.length > 0 || s.reviews.length > 0 || s.plannerItems.length > 0 || s.habits.some((h) => !h.isSystem || h.versions.length > 1);
+  Object.keys(s.entries).length > 0 || s.goals.length > 0 || s.reviews.length > 0 || s.plannerItems.length > 0 || s.routines.length > 0 || s.habits.some((h) => !h.isSystem || h.versions.length > 1);
 
 /** Replace everything with a state loaded from the account (does not trigger a re-upload). */
 export function replaceState(raw: unknown) {
@@ -381,4 +433,88 @@ export function setPlannerStatus(id: string, status: PlannerStatus) {
 export function deletePlannerItem(id: string) {
   const s = getState();
   commit({ ...s, plannerItems: s.plannerItems.filter((x) => x.id !== id) });
+}
+
+// ---------- Routines (recurring templates — never create tracking entries) ----------
+export type RoutineInput = Partial<Omit<Routine, "createdAt" | "updatedAt">> & { title: string; startDate: string };
+
+export function saveRoutine(input: RoutineInput) {
+  const s = getState();
+  const title = input.title.trim();
+  if (!title) return null;
+  if (input.id && s.routines.some((x) => x.id === input.id)) {
+    commit({ ...s, routines: s.routines.map((x) => (x.id === input.id ? { ...x, ...input, title, updatedAt: now() } : x)) });
+    return input.id;
+  }
+  const r: Routine = {
+    description: "", category: "PERSONAL", type: "SCHEDULE", frequency: "WEEKLY", daysOfWeek: [], intervalWeeks: 1, dayOfMonth: null,
+    startTime: null, endTime: null, endDate: null, location: "", status: "ACTIVE", pausedFrom: null, pauses: [],
+    plannerEnabled: false, calendarEnabled: true, activityId: null, goalId: null, projectId: null, milestoneId: null, archivedAt: null,
+    ...input, id: uid(), title, createdAt: now(), updatedAt: now(),
+  };
+  commit({ ...s, routines: [...s.routines, r] });
+  return r.id;
+}
+
+/** "This and future": ends the old routine the day before `from` and starts a copy with the changes. Past stays untouched. */
+export function splitRoutine(id: string, from: string, patch: Partial<RoutineInput>, dayBefore: string) {
+  const s = getState();
+  const old = s.routines.find((r) => r.id === id);
+  if (!old) return null;
+  if (from <= old.startDate) { saveRoutine({ ...old, ...patch, id }); return id; }
+  const copy: Routine = { ...old, ...patch, id: uid(), startDate: from, pauses: [], createdAt: now(), updatedAt: now() } as Routine;
+  const routines = s.routines.map((r) => (r.id === id ? { ...r, endDate: dayBefore, updatedAt: now() } : r));
+  // Exceptions on/after the split move with the new routine.
+  const routineExceptions = s.routineExceptions.map((e) => (e.routineId === id && e.occurrenceDate >= from ? { ...e, routineId: copy.id } : e));
+  commit({ ...s, routines: [...routines, copy], routineExceptions });
+  return copy.id;
+}
+
+export function pauseRoutine(id: string, today: string) {
+  const s = getState();
+  commit({ ...s, routines: s.routines.map((r) => (r.id === id ? { ...r, status: "PAUSED", pausedFrom: today, updatedAt: now() } : r)) });
+}
+export function resumeRoutine(id: string, today: string, dayBefore: string) {
+  const s = getState();
+  commit({
+    ...s,
+    routines: s.routines.map((r) => r.id !== id ? r : {
+      ...r, status: "ACTIVE", pausedFrom: null, updatedAt: now(), archivedAt: null,
+      pauses: r.pausedFrom && r.pausedFrom <= dayBefore ? [...r.pauses, { from: r.pausedFrom, to: dayBefore }] : r.pauses,
+    }),
+  });
+}
+export function archiveRoutine(id: string, today: string) {
+  const s = getState();
+  commit({ ...s, routines: s.routines.map((r) => (r.id === id ? { ...r, status: "ARCHIVED", archivedAt: today, updatedAt: now() } : r)) });
+}
+/** Hard delete. Planner items generated from it are kept (history), only unlinked visually. */
+export function deleteRoutine(id: string) {
+  const s = getState();
+  commit({ ...s, routines: s.routines.filter((r) => r.id !== id), routineExceptions: s.routineExceptions.filter((e) => e.routineId !== id) });
+}
+
+export function setRoutineException(x: Omit<RoutineException, "id" | "createdAt" | "updatedAt" | "note"> & { note?: string }) {
+  const s = getState();
+  const rest = s.routineExceptions.filter((e) => !(e.routineId === x.routineId && e.occurrenceDate === x.occurrenceDate));
+  const prev = s.routineExceptions.find((e) => e.routineId === x.routineId && e.occurrenceDate === x.occurrenceDate);
+  commit({ ...s, routineExceptions: [...rest, { note: "", ...x, id: prev?.id ?? uid(), createdAt: prev?.createdAt ?? now(), updatedAt: now() }] });
+}
+export function clearRoutineException(routineId: string, occurrenceDate: string) {
+  const s = getState();
+  commit({ ...s, routineExceptions: s.routineExceptions.filter((e) => !(e.routineId === routineId && e.occurrenceDate === occurrenceDate)) });
+}
+
+/** Creates planner items for the given occurrences, skipping ones already generated. Intention only. */
+export function addOccurrencesToPlanner(occ: { routine: Routine; originalDate: string; date: string; startTime: string | null; endTime: string | null }[]) {
+  const s = getState();
+  const have = new Set(s.plannerItems.filter((i) => i.routineId).map((i) => `${i.routineId}|${i.occurrenceDate}`));
+  const fresh: PlannerItem[] = occ.filter((o) => !have.has(`${o.routine.id}|${o.originalDate}`)).map((o) => ({
+    id: uid(), title: o.routine.title, description: o.routine.description, type: "EVENT", category: o.routine.category,
+    date: o.date, startTime: o.startTime, endTime: o.endTime, status: "PLANNED",
+    goalId: o.routine.goalId, projectId: o.routine.projectId, milestoneId: o.routine.milestoneId, activityId: o.routine.activityId,
+    routineId: o.routine.id, occurrenceDate: o.originalDate, createdAt: now(), updatedAt: now(), completedAt: null,
+  }));
+  if (fresh.length) commit({ ...s, plannerItems: [...s.plannerItems, ...fresh] });
+  return fresh.length;
 }
