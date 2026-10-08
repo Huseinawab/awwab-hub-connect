@@ -9,7 +9,7 @@ afterEach(cleanup);
 async function openNavigation(path = "/home") {
   setLang("id");
   const root = createRootRoute({ component: () => <><Outlet /><MobileNavigation /></> });
-  const routes = ["/home", "/daily", "/calendar", "/monthly", "/goals", "/planner", "/weekly", "/insights", "/review", "/settings"].map((path) => createRoute({ getParentRoute: () => root, path, component: () => <div>Page</div> }));
+  const routes = ["/home", "/daily", "/calendar", "/monthly", "/goals", "/planner", "/routines", "/weekly", "/insights", "/review", "/settings"].map((path) => createRoute({ getParentRoute: () => root, path, component: () => <div>Page</div> }));
   const router = createRouter({ routeTree: root.addChildren(routes), history: createMemoryHistory({ initialEntries: [path] }) });
   render(<RouterProvider router={router} />);
   await screen.findByRole("button", { name: "Lainnya" });

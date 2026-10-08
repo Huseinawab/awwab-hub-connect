@@ -11,6 +11,7 @@ import { DomainList, InsightCard, LifeScoreBlock, WeekTrend } from "@/components
 import { Segmented } from "@/components/awwab/ui";
 import { LifeProgress } from "@/components/awwab/LifeProgress";
 import { TodayPlan } from "@/components/awwab/Planner";
+import { TodaySchedule } from "@/components/awwab/Routines";
 
 export const Route = createFileRoute("/home")({
   head: () => meta("Home — AWWAB", "How you're doing, what changed, and what to notice."),

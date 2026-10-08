@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { addDays, datesBetween, formatShort, fromKey, periodFor } from "@/lib/awwab/dates";
 import { locale, useLang, useT } from "@/lib/awwab/i18n";
 import { PLANNER_CATEGORIES } from "@/lib/awwab/planner";
-import { activeOn, conflicts, isOff, occurrencesIn, scheduledMinutes, type Occurrence } from "@/lib/awwab/routines";
+import { conflicts, isOff, occurrencesIn, scheduledMinutes, type Occurrence } from "@/lib/awwab/routines";
 import {
   addOccurrencesToPlanner, archiveRoutine, deleteRoutine, pauseRoutine, resumeRoutine, useAppState,
   type PlannerCategory, type Routine, type RoutineStatus,
@@ -84,7 +84,6 @@ function RoutinesPage() {
               );
             })}
           </div>
-          {activeOn(occ, today).length === 0 && null}
         </section>
 
         {clash.length > 0 && (

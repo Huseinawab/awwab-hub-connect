@@ -20,6 +20,7 @@ import { Route as MonthlyRouteImport } from './routes/monthly'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReviewRouteImport } from './routes/review'
+import { Route as RoutinesRouteImport } from './routes/routines'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as WeeklyRouteImport } from './routes/weekly'
 
@@ -78,6 +79,11 @@ const ReviewRoute = ReviewRouteImport.update({
   path: '/review',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RoutinesRoute = RoutinesRouteImport.update({
+  id: '/routines',
+  path: '/routines',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/planner': typeof PlannerRoute
   '/reset-password': typeof ResetPasswordRoute
   '/review': typeof ReviewRoute
+  '/routines': typeof RoutinesRoute
   '/settings': typeof SettingsRoute
   '/weekly': typeof WeeklyRoute
 }
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/planner': typeof PlannerRoute
   '/reset-password': typeof ResetPasswordRoute
   '/review': typeof ReviewRoute
+  '/routines': typeof RoutinesRoute
   '/settings': typeof SettingsRoute
   '/weekly': typeof WeeklyRoute
 }
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/planner': typeof PlannerRoute
   '/reset-password': typeof ResetPasswordRoute
   '/review': typeof ReviewRoute
+  '/routines': typeof RoutinesRoute
   '/settings': typeof SettingsRoute
   '/weekly': typeof WeeklyRoute
 }
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/planner'
     | '/reset-password'
     | '/review'
+    | '/routines'
     | '/settings'
     | '/weekly'
   fileRoutesByTo: FileRoutesByTo
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/planner'
     | '/reset-password'
     | '/review'
+    | '/routines'
     | '/settings'
     | '/weekly'
   id:
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '/planner'
     | '/reset-password'
     | '/review'
+    | '/routines'
     | '/settings'
     | '/weekly'
   fileRoutesById: FileRoutesById
@@ -195,6 +207,7 @@ export interface RootRouteChildren {
   PlannerRoute: typeof PlannerRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ReviewRoute: typeof ReviewRoute
+  RoutinesRoute: typeof RoutinesRoute
   SettingsRoute: typeof SettingsRoute
   WeeklyRoute: typeof WeeklyRoute
 }
@@ -278,6 +291,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/routines': {
+      id: '/routines'
+      path: '/routines'
+      fullPath: '/routines'
+      preLoaderRoute: typeof RoutinesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -307,6 +327,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlannerRoute: PlannerRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ReviewRoute: ReviewRoute,
+  RoutinesRoute: RoutinesRoute,
   SettingsRoute: SettingsRoute,
   WeeklyRoute: WeeklyRoute,
 }

@@ -6,6 +6,8 @@ import { useAppState, type PlannerCategory, type PlannerItem, type PlannerType }
 import { meta, useToday } from "@/lib/awwab/useToday";
 import { PageHeader, Stepper } from "@/components/awwab/ui";
 import { useLang, useT } from "@/lib/awwab/i18n";
+import { isOff, occurrencesIn, type Occurrence } from "@/lib/awwab/routines";
+import { describeRoutine } from "@/components/awwab/Routines";
 
 export const Route = createFileRoute("/calendar")({
   head: () => meta("Calendar — AWWAB", "Goal deadlines, project dates, milestones and planner items in one monthly view."),
@@ -15,7 +17,8 @@ export const Route = createFileRoute("/calendar")({
 /** One calendar entry: a goal/project/milestone date or a dated planner item. */
 type CalEntry =
   | ({ kind: "goalish" } & DatedItem)
-  | { kind: "planner"; item: PlannerItem };
+  | { kind: "planner"; item: PlannerItem }
+  | { kind: "routine"; occ: Occurrence };
 
 const TYPE_CLS: Record<DatedItem["type"] | "planner", string> = { goal: "bg-rose-soft", project: "bg-orange-soft", milestone: "bg-beige", planner: "bg-sage-soft" };
 
@@ -27,24 +30,26 @@ function CalendarPage() {
   const [anchor, setAnchor] = useState(today);
   const [selected, setSelected] = useState<CalEntry | null>(null);
   const month = periodFor("month", anchor);
+  const gridStart = startOfWeek(month.start);
+  const gridEnd = addDays(startOfWeek(month.end), 6);
   const items = useMemo<CalEntry[]>(() => {
     const goalish: CalEntry[] = datedItems(state).map((i) => ({ kind: "goalish", ...i }));
     const planned: CalEntry[] = state.plannerItems
       .filter((i) => i.date !== null)
       .map((item) => ({ kind: "planner", item }));
-    return [...goalish, ...planned];
-  }, [state]);
-  const gridStart = startOfWeek(month.start);
-  const gridEnd = addDays(startOfWeek(month.end), 6);
+    const routines: CalEntry[] = occurrencesIn(state.routines.filter((r) => r.calendarEnabled), state.routineExceptions, gridStart, gridEnd)
+      .filter((o) => !isOff(o))
+      .map((occ) => ({ kind: "routine", occ }));
+    return [...goalish, ...planned, ...routines];
+  }, [state, gridStart, gridEnd]);
   const days = datesBetween(gridStart, gridEnd);
-  const entryDate = (e: CalEntry) => (e.kind === "planner" ? e.item.date! : e.date);
+  const entryDate = (e: CalEntry) => (e.kind === "planner" ? e.item.date! : e.kind === "routine" ? e.occ.date : e.date);
+  const entryTime = (e: CalEntry) => (e.kind === "planner" ? (e.item.startTime ?? "99:99") : e.kind === "routine" ? (e.occ.startTime ?? "99:99") : "99:98");
   const byDate = (d: string) =>
     items
       .filter((i) => entryDate(i) === d)
       .sort((a, b) => {
-        const ta = a.kind === "planner" ? (a.item.startTime ?? "99:99") : "99:98";
-        const tb = b.kind === "planner" ? (b.item.startTime ?? "99:99") : "99:98";
-        return ta.localeCompare(tb);
+        return entryTime(a).localeCompare(entryTime(b));
       });
   const next = upcoming(state, today, 6);
 
@@ -69,12 +74,13 @@ function CalendarPage() {
                 <span className={`inline-grid h-6 w-6 place-items-center rounded-full text-xs font-bold ${d === today ? "bg-primary text-primary-foreground" : ""}`}>{fromKey(d).getDate()}</span>
                 <div className="mt-1 space-y-1">
                   {list.slice(0, 3).map((i) => {
-                    const cls = i.kind === "planner" ? TYPE_CLS.planner : TYPE_CLS[i.type];
-                    const title = i.kind === "planner" ? i.item.title : i.title;
-                    const done = i.kind === "planner" ? i.item.status !== "PLANNED" : i.done;
-                    const time = i.kind === "planner" ? i.item.startTime : null;
+                    const cls = i.kind === "planner" ? TYPE_CLS.planner : i.kind === "routine" ? "border border-dashed border-sage bg-cream" : TYPE_CLS[i.type];
+                    const title = i.kind === "planner" ? i.item.title : i.kind === "routine" ? i.occ.routine.title : i.title;
+                    const done = i.kind === "planner" ? i.item.status !== "PLANNED" : i.kind === "routine" ? false : i.done;
+                    const time = i.kind === "planner" ? i.item.startTime : i.kind === "routine" ? i.occ.startTime : null;
+                    const k = i.kind === "planner" ? i.item.id : i.kind === "routine" ? i.occ.key : i.id;
                     return (
-                      <button key={`${i.kind}-${i.kind === "planner" ? i.item.id : i.id}`} onClick={() => setSelected(i)} className={`block w-full truncate rounded-sm px-1 py-0.5 text-left text-[11px] font-semibold ${cls} ${done ? "line-through opacity-60" : ""}`}>
+                      <button key={`${i.kind}-${k}`} onClick={() => setSelected(i)} className={`block w-full truncate rounded-sm px-1 py-0.5 text-left text-[11px] font-semibold ${cls} ${done ? "line-through opacity-60" : ""}`}>
                         {time ? `${time} ` : ""}{title}
                       </button>
                     );
@@ -92,7 +98,24 @@ function CalendarPage() {
         <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-orange-soft" /> {t("type.project")}</span>
         <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-beige" /> {t("type.milestone")}</span>
         <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-sage-soft" /> {t("type.planner")}</span>
+        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm border border-dashed border-sage bg-cream" /> {t("type.routine")}</span>
       </div>
+
+      {selected && selected.kind === "routine" && (
+        <div className="surface mt-6 p-5">
+          <p className="text-caption">{t("type.routine")}</p>
+          <h2 className="text-h2">{selected.occ.routine.title}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {formatLong(selected.occ.date)}{selected.occ.startTime ? ` · ${selected.occ.startTime}${selected.occ.endTime ? `–${selected.occ.endTime}` : ""}` : ""}
+            {" · "}<span className="planner-cat" data-cat={selected.occ.routine.category}>{t(`pl.cat.${selected.occ.routine.category}`)}</span>
+          </p>
+          <p className="mt-1 text-sm">{describeRoutine(selected.occ.routine, t)}{selected.occ.routine.location ? ` · ${selected.occ.routine.location}` : ""}</p>
+          <div className="mt-3 flex gap-2">
+            <Link to="/routines" className="btn btn-soft">{t("rt.open")}</Link>
+            <button className="btn btn-ghost" onClick={() => setSelected(null)}>{t("common.close")}</button>
+          </div>
+        </div>
+      )}
 
       {selected && selected.kind === "goalish" && (
         <div className="surface mt-6 p-5">
