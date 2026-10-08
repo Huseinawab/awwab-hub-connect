@@ -2,17 +2,22 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { addDays, datesBetween, formatLong, formatShort, fromKey, nextPeriod, periodFor, previousPeriod, startOfWeek } from "@/lib/awwab/dates";
 import { datedItems, upcoming, type DatedItem } from "@/lib/awwab/goals";
-import { useAppState } from "@/lib/awwab/store";
+import { useAppState, type PlannerCategory, type PlannerItem, type PlannerType } from "@/lib/awwab/store";
 import { meta, useToday } from "@/lib/awwab/useToday";
 import { PageHeader, Stepper } from "@/components/awwab/ui";
 import { useLang, useT } from "@/lib/awwab/i18n";
 
 export const Route = createFileRoute("/calendar")({
-  head: () => meta("Calendar — AWWAB", "Goal deadlines, project dates and milestones in one monthly view."),
+  head: () => meta("Calendar — AWWAB", "Goal deadlines, project dates, milestones and planner items in one monthly view."),
   component: CalendarPage,
 });
 
-const TYPE_CLS: Record<DatedItem["type"], string> = { goal: "bg-rose-soft", project: "bg-orange-soft", milestone: "bg-beige" };
+/** One calendar entry: a goal/project/milestone date or a dated planner item. */
+type CalEntry =
+  | ({ kind: "goalish" } & DatedItem)
+  | { kind: "planner"; item: PlannerItem };
+
+const TYPE_CLS: Record<DatedItem["type"] | "planner", string> = { goal: "bg-rose-soft", project: "bg-orange-soft", milestone: "bg-beige", planner: "bg-sage-soft" };
 
 function CalendarPage() {
   const today = useToday();
