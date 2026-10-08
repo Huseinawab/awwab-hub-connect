@@ -91,9 +91,10 @@ function CalendarPage() {
         <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-rose-soft" /> {t("type.goal")}</span>
         <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-orange-soft" /> {t("type.project")}</span>
         <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-beige" /> {t("type.milestone")}</span>
+        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-sage-soft" /> {t("type.planner")}</span>
       </div>
 
-      {selected && (
+      {selected && selected.kind === "goalish" && (
         <div className="surface mt-6 p-5">
           <p className="text-caption">{t(`type.${selected.type}`)}</p>
           <h2 className="text-h2">{selected.title}</h2>
@@ -103,6 +104,24 @@ function CalendarPage() {
           </p>
           <div className="mt-3 flex gap-2">
             <Link to="/goals" className="btn btn-soft">{t("cal.open")}</Link>
+            <button className="btn btn-ghost" onClick={() => setSelected(null)}>{t("common.close")}</button>
+          </div>
+        </div>
+      )}
+
+      {selected && selected.kind === "planner" && (
+        <div className="surface mt-6 p-5">
+          <p className="text-caption">{t(`pl.type.${selected.item.type as PlannerType}`)}</p>
+          <h2 className="text-h2">{selected.item.title}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {formatLong(selected.item.date!)}
+            {selected.item.startTime ? ` · ${selected.item.startTime}${selected.item.endTime ? `–${selected.item.endTime}` : ""}` : ""}
+            {" · "}<span className="planner-cat" data-cat={selected.item.category as PlannerCategory}>{t(`pl.cat.${selected.item.category}`)}</span>
+            {" · "}{t(`pl.st.${selected.item.status}`)}
+          </p>
+          {selected.item.description && <p className="mt-2 text-sm">{selected.item.description}</p>}
+          <div className="mt-3 flex gap-2">
+            <Link to="/planner" className="btn btn-soft">{t("cal.openPlanner")}</Link>
             <button className="btn btn-ghost" onClick={() => setSelected(null)}>{t("common.close")}</button>
           </div>
         </div>
