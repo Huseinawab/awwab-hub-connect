@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { BarChart3, CalendarCheck, CalendarDays, CalendarRange, Home, Lightbulb, MoreHorizontal, NotebookPen, PenLine, Settings, Target } from "lucide-react";
+import { BarChart3, CalendarCheck, CalendarDays, CalendarRange, Home, Lightbulb, MoreHorizontal, NotebookPen, PenLine, Repeat, Settings, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/lib/awwab/i18n";
@@ -15,6 +15,7 @@ const PRIMARY = [
 
 const MORE = [
   { to: "/planner", key: "nav.planner", icon: CalendarCheck },
+  { to: "/routines", key: "nav.routines", icon: Repeat },
   { to: "/weekly", key: "nav.weekly", icon: BarChart3 },
   { to: "/insights", key: "nav.insights", icon: Lightbulb },
   { to: "/review", key: "nav.review", icon: NotebookPen },

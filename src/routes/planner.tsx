@@ -5,7 +5,9 @@ import { addDays, datesBetween, formatShort, fromKey, periodFor } from "@/lib/aw
 import { datedItems, goalStatus } from "@/lib/awwab/goals";
 import { locale, useLang, useT } from "@/lib/awwab/i18n";
 import { inboxItems, itemsIn, itemsOn } from "@/lib/awwab/planner";
-import { savePlannerItem, useAppState, type PlannerItem } from "@/lib/awwab/store";
+import { addOccurrencesToPlanner, savePlannerItem, useAppState, type PlannerItem } from "@/lib/awwab/store";
+import { isOff, occurrencesIn } from "@/lib/awwab/routines";
+import { toast } from "sonner";
 import { meta, useToday } from "@/lib/awwab/useToday";
 import { PageHeader, Stepper } from "@/components/awwab/ui";
 import { PlannerItemForm, PlannerItemRow, PlanVsReality } from "@/components/awwab/Planner";
@@ -33,6 +35,11 @@ function PlannerPage() {
   const [edit, setEdit] = useState<PlannerItem | null>(null);
   const [defaultDate, setDefaultDate] = useState<string | null>(today);
   const [planOpen, setPlanOpen] = useState(false);
+  const addRoutines = () => {
+    const occ = occurrencesIn(s.routines.filter((r) => r.plannerEnabled), s.routineExceptions, week.start, week.end).filter((o) => !isOff(o));
+    const n = addOccurrencesToPlanner(occ);
+    toast(n ? t("rt.addedPlanner", { n }) : t("rt.nothingNew"));
+  };
   const openForm = (item: PlannerItem | null, date: string | null = isThisWeek ? today : week.start) => {
     setEdit(item); setDefaultDate(date); setFormOpen(true);
   };
@@ -46,6 +53,7 @@ function PlannerPage() {
           </Stepper>
           <button className="btn btn-primary" onClick={() => openForm(null)}><Plus className="h-4 w-4" />{t("pl.add")}</button>
           <button className="btn btn-soft" onClick={() => setPlanOpen(true)}>{t("pl.planWeek")}</button>
+          {s.routines.some((r) => r.plannerEnabled && r.status === "ACTIVE") && <button className="btn btn-ghost" onClick={addRoutines}>{t("rt.routinesWeek")}</button>}
         </div>
       </PageHeader>
 

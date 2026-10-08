@@ -6,3 +6,4 @@
 - [x] Tests for habit history + language
 - [x] Restore original watercolor cat illustrations with five Life Score states and verify page rendering.
 - [x] Simplify mobile navigation into five main destinations and a More menu; automated tests verify opening, dismissal, destination links, and translations (signed-in preview check unavailable: external unmanaged auth).
+- [x] Routines / Life Schedule: /routines page, library, weekly overview, today schedule, skip/reschedule/cancel, pause/archive, edit this/future/all, conflicts, Planner + Calendar + Home links, ID/EN, tests.
