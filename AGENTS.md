@@ -21,3 +21,4 @@
 - Planner items (`plannerItems` in AppState, derivations in `src/lib/awwab/planner.ts`) record intention only; they never write tracking entries or feed calc.ts, so plans cannot inflate Life Score.
 - Mobile navigation is isolated in `MobileNavigation` with primary links and a controlled overflow popover; desktop navigation remains in AppShell so mobile simplification does not change desktop access.
 - Routines (`routines`/`routineExceptions` in AppState, derivations in `src/lib/awwab/routines.ts`) are templates; occurrences are computed, never stored, and per-date exceptions override them. "This and future" edits split the routine at a date so the past is never rewritten; routines never feed calc.ts.
+- Daily Opening content lives only in `src/lib/awwab/reminders.data.json` (selected by day of month via `reminders.ts`); seen-state is `lastOpeningDate` in AppState so it syncs like everything else and never feeds calc.ts.

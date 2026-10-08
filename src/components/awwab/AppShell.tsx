@@ -14,6 +14,7 @@ import { useToday } from "@/lib/awwab/useToday";
 import { resolveCatState } from "@/lib/branding/catStates";
 import { AwwabLogo, useDynamicFavicon } from "@/components/branding/AwwabLogo";
 import { MobileNavigation } from "./MobileNavigation";
+import { DailyOpening } from "./DailyOpening";
 
 /** Current state of the companion cat, from this week's Life Score (same number Home shows by default). */
 export function useCurrentCatState() {
@@ -52,9 +53,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Signed-out visitors go to /auth; undefined means the session is still being checked.
   useEffect(() => { if (!isPublic && mounted && user === null) navigate({ to: "/auth", replace: true }); }, [isPublic, mounted, user, navigate]);
   const cat = useCurrentCatState();
+  const lastOpening = useAppState().lastOpeningDate;
+  const today = useToday();
   useDynamicFavicon(cat);
   // Sign-in pages render full-screen, without the app frame.
   if (isPublic) return mounted ? <>{children}</> : null;
+  if (mounted && user && lastOpening !== today) return <DailyOpening user={user} today={today} />;
   return (
     <div className="min-h-screen md:grid md:grid-cols-[232px_minmax(0,1fr)]">
       <aside className="sticky top-0 hidden h-screen flex-col border-r bg-cream px-4 py-8 md:flex">
