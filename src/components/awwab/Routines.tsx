@@ -64,7 +64,7 @@ export function RoutineForm({ open, onOpenChange, routine, occurrence, today }: 
       setRoutineException({ routineId: routine.id, occurrenceDate: occurrence.originalDate, type: "RESCHEDULED", newDate: occurrence.date, newStartTime: clean.startTime, newEndTime: clean.endTime });
     } else if (routine && scope === "future") {
       const from = occurrence?.originalDate ?? today;
-      splitRoutine(routine.id, from, { ...clean, id: undefined, startDate: from } as Partial<RoutineInput>, addDays(from, -1));
+      splitRoutine(routine.id, from, { ...clean, startDate: from, endDate: clean.endDate && clean.endDate >= from ? clean.endDate : null }, addDays(from, -1));
     } else if (!saveRoutine(clean)) return;
     onOpenChange(false);
   };
