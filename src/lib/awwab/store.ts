@@ -163,6 +163,7 @@ const listeners = new Set<() => void>();
 
 function parseState(p: any): AppState {
   const habits = arr<Habit>(p?.habits).filter(validHabit);
+  const hasHabitList = Array.isArray(p?.habits) && p.habits.length === habits.length; // user may have deleted every built-in
   return {
     version: 1,
     entries: p?.entries && typeof p.entries === "object" ? p.entries : {},
@@ -170,7 +171,7 @@ function parseState(p: any): AppState {
     projects: arr(p?.projects),
     milestones: arr(p?.milestones),
     reviews: arr(p?.reviews),
-    habits: habits.length ? habits : systemHabits(),
+    habits: habits.length || hasHabitList ? habits : systemHabits(),
     plannerItems: arr<PlannerItem>(p?.plannerItems).filter((x) => !!x && typeof x.id === "string" && typeof x.title === "string"),
     routines: arr<Routine>(p?.routines).filter((x) => !!x && typeof x.id === "string" && typeof x.startDate === "string").map((r) => ({ ...r, daysOfWeek: arr<number>(r.daysOfWeek), pauses: arr(r.pauses), intervalWeeks: r.intervalWeeks || 1 })),
     routineExceptions: arr<RoutineException>(p?.routineExceptions).filter((x) => !!x && typeof x.routineId === "string"),
@@ -326,6 +327,12 @@ export interface HabitInput {
   weight: number;
 }
 
+/** A daily checklist only means "done"; a higher daily target is counted as an amount instead. */
+const normalize = <V extends { inputType: InputType; frequency: Frequency; target: number; unit: string }>(v: V) =>
+  v.inputType === "checklist" && v.frequency === "day"
+    ? v.target > 1 ? { inputType: "quantitative" as InputType, target: v.target, unit: v.unit && v.unit !== "day" ? v.unit : "times" } : { target: 1 }
+    : { target: v.target };
+
 /** Adds a new version effective `today`; replaces a version already created today. Never rewrites the past. */
 function withVersion(h: Habit, today: string, patch: Partial<HabitVersion>): Habit {
   const last = latestVersion(h);
@@ -349,7 +356,7 @@ export function createHabit(input: HabitInput, today: string) {
     createdAt: now(),
     updatedAt: now(),
     archivedAt: null,
-    versions: [{ ...v, target: v.inputType === "checklist" && v.frequency === "day" ? 1 : v.target, effectiveFrom: today, active: true }],
+    versions: [{ ...v, ...normalize(v), effectiveFrom: today, active: true }],
   };
   commit({ ...s, habits: [...s.habits, h] });
   return h.id;
@@ -358,7 +365,7 @@ export function createHabit(input: HabitInput, today: string) {
 /** `customName` null keeps the translated system name. */
 export function updateHabit(id: string, customName: string | null, v: Omit<HabitInput, "name">, today: string) {
   updateHabitState(id, (h) => ({
-    ...withVersion(h, today, { ...v, target: v.inputType === "checklist" && v.frequency === "day" ? 1 : v.target }),
+    ...withVersion(h, today, { ...v, ...normalize(v) }),
     customName,
   }));
 }
@@ -373,10 +380,10 @@ export function reactivateHabit(id: string, today: string) {
 
 export const habitHasHistory = (s: AppState, id: string) => Object.values(s.entries).some((day) => !!day[id]);
 
-/** Hard delete — only for habits without any recorded data. */
-export function deleteHabit(id: string) {
+/** Hard delete. With `force`, also allowed when history exists (entries stay stored but are no longer scored). */
+export function deleteHabit(id: string, force = false) {
   const s = getState();
-  if (habitHasHistory(s, id)) return false;
+  if (!force && habitHasHistory(s, id)) return false;
   commit({ ...s, habits: s.habits.filter((h) => h.id !== id) });
   return true;
 }

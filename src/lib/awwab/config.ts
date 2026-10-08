@@ -103,6 +103,11 @@ export const SYSTEM_DEFAULTS: Record<string, Def> = {
   meal_planning: def("life", "checklist", 1, "times", "week", 70),
 };
 
+/** Targets the built-in labels describe; used to pre-fill older checklist-only versions when edited. */
+export const LABEL_TARGETS: Record<string, { target: number; unit: string }> = {
+  reading: { target: 10, unit: "pages" }, journaling: { target: 1, unit: "pages" }, fruit_veg: { target: 2, unit: "times" },
+};
+
 export const systemHabits = (): Habit[] =>
   Object.entries(SYSTEM_DEFAULTS).map(([id, d]) => ({
     id,
