@@ -128,7 +128,8 @@ const en = {
   "review.focus": "My one focus for next month", "review.focusPh": "e.g. Academic, or Finish AWWAB MVP", "review.update": "Update review",
   "review.save": "Save review", "review.past": "Past reviews",
   // calendar
-  "cal.subtitle": "Important dates from your goals, projects and milestones.", "cal.in": " · in {p}", "cal.open": "Open in Goals",
+  "cal.subtitle": "Important dates from your goals, projects, milestones and planner.", "cal.in": " · in {p}", "cal.open": "Open in Goals",
+  "cal.openPlanner": "Open in Planner", "type.planner": "Planner",
   "cal.upcoming": "Upcoming", "cal.nothing": "Nothing upcoming. Add dates to goals, projects or milestones to see them here.",
   "wd.0": "Mon", "wd.1": "Tue", "wd.2": "Wed", "wd.3": "Thu", "wd.4": "Fri", "wd.5": "Sat", "wd.6": "Sun",
   // settings / habits
@@ -281,7 +282,8 @@ const id: Record<Key, string> = {
   "review.q.change": "Apa yang perlu diubah bulan depan?", "review.q.stop": "Apa yang perlu dihentikan?", "review.q.continue": "Apa yang perlu dilanjutkan?",
   "review.focus": "Satu fokus saya bulan depan", "review.focusPh": "mis. Akademik, atau Selesaikan MVP AWWAB", "review.update": "Perbarui review",
   "review.save": "Simpan review", "review.past": "Review sebelumnya",
-  "cal.subtitle": "Tanggal penting dari tujuan, proyek, dan milestone.", "cal.in": " · di {p}", "cal.open": "Buka di Tujuan",
+  "cal.subtitle": "Tanggal penting dari tujuan, proyek, milestone, dan planner.", "cal.in": " · di {p}", "cal.open": "Buka di Tujuan",
+  "cal.openPlanner": "Buka di Planner", "type.planner": "Planner",
   "cal.upcoming": "Akan datang", "cal.nothing": "Belum ada yang akan datang. Tambahkan tanggal pada tujuan, proyek, atau milestone.",
   "wd.0": "Sen", "wd.1": "Sel", "wd.2": "Rab", "wd.3": "Kam", "wd.4": "Jum", "wd.5": "Sab", "wd.6": "Min",
   "settings.subtitle": "Bahasa dan kebiasaan yang kamu catat.", "settings.language": "Bahasa",
