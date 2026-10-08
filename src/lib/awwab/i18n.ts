@@ -8,6 +8,7 @@ export type T = (key: string, p?: Params) => string;
 
 const en = {
   "nav.routines": "Routines", "type.routine": "Routine",
+  "rt.f.dayDetails": "Details by day", "rt.f.dayTitle": "Day heading", "rt.f.dayDescription": "Day details", "rt.f.generalDescription": "General details", "rt.f.dayTitlePlaceholder": "Push day / Meal menu / Classes", "rt.f.dayDescriptionPlaceholder": "Exercises, dishes, subjects…", "rt.f.plannerOptional": "Include when adding to Planner",
   "rt.eyebrow": "Routines", "rt.title": "Your normal week", "rt.subtitle": "What does your life usually look like? Routines are structure, not scores — track what really happens in Daily.",
   "rt.add": "New routine", "rt.edit": "Edit routine", "rt.save": "Save routine", "rt.library": "Routine Library", "rt.week": "Weekly overview", "rt.today": "Today's Schedule",
   "rt.noToday": "No routines today.", "rt.noTodayBody": "A free day — or a routine to add.", "rt.empty": "No routines yet.", "rt.emptyBody": "Add the things that repeat in your life: classes, gym, meetings, meals.",
@@ -196,6 +197,7 @@ type Key = keyof typeof en;
 
 const id: Record<Key, string> = {
   "nav.routines": "Rutinitas", "type.routine": "Rutinitas",
+  "rt.f.dayDetails": "Rincian per hari", "rt.f.dayTitle": "Judul hari", "rt.f.dayDescription": "Keterangan hari", "rt.f.generalDescription": "Keterangan umum", "rt.f.dayTitlePlaceholder": "Push day / Menu makan / Kuliah", "rt.f.dayDescriptionPlaceholder": "Daftar latihan, menu, mata kuliah…", "rt.f.plannerOptional": "Sertakan saat ditambahkan ke Planner",
   "rt.eyebrow": "Rutinitas", "rt.title": "Minggu normalmu", "rt.subtitle": "Seperti apa hidupmu biasanya? Rutinitas adalah struktur, bukan skor — catat yang benar-benar terjadi di Harian.",
   "rt.add": "Rutinitas baru", "rt.edit": "Ubah rutinitas", "rt.save": "Simpan rutinitas", "rt.library": "Pustaka Rutinitas", "rt.week": "Ringkasan mingguan", "rt.today": "Jadwal Hari Ini",
   "rt.noToday": "Tidak ada rutinitas hari ini.", "rt.noTodayBody": "Hari yang lapang — atau ada rutinitas yang bisa ditambahkan.", "rt.empty": "Belum ada rutinitas.", "rt.emptyBody": "Tambahkan hal yang berulang dalam hidupmu: kuliah, gym, rapat, jadwal makan.",

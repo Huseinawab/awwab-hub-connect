@@ -75,7 +75,7 @@ function CalendarPage() {
                 <div className="mt-1 space-y-1">
                   {list.slice(0, 3).map((i) => {
                     const cls = i.kind === "planner" ? TYPE_CLS.planner : i.kind === "routine" ? "border border-dashed border-sage bg-cream" : TYPE_CLS[i.type];
-                    const title = i.kind === "planner" ? i.item.title : i.kind === "routine" ? i.occ.routine.title : i.title;
+                    const title = i.kind === "planner" ? i.item.title : i.kind === "routine" ? i.occ.title : i.title;
                     const done = i.kind === "planner" ? i.item.status !== "PLANNED" : i.kind === "routine" ? false : i.done;
                     const time = i.kind === "planner" ? i.item.startTime : i.kind === "routine" ? i.occ.startTime : null;
                     const k = i.kind === "planner" ? i.item.id : i.kind === "routine" ? i.occ.key : i.id;
@@ -104,12 +104,13 @@ function CalendarPage() {
       {selected && selected.kind === "routine" && (
         <div className="surface mt-6 p-5">
           <p className="text-caption">{t("type.routine")}</p>
-          <h2 className="text-h2">{selected.occ.routine.title}</h2>
+          <h2 className="text-h2">{selected.occ.title}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {formatLong(selected.occ.date)}{selected.occ.startTime ? ` · ${selected.occ.startTime}${selected.occ.endTime ? `–${selected.occ.endTime}` : ""}` : ""}
             {" · "}<span className="planner-cat" data-cat={selected.occ.routine.category}>{t(`pl.cat.${selected.occ.routine.category}`)}</span>
           </p>
           <p className="mt-1 text-sm">{describeRoutine(selected.occ.routine, t)}{selected.occ.routine.location ? ` · ${selected.occ.routine.location}` : ""}</p>
+          {selected.occ.description && <p className="mt-2 whitespace-pre-wrap break-words text-sm">{selected.occ.description}</p>}
           <div className="mt-3 flex gap-2">
             <Link to="/routines" className="btn btn-soft">{t("rt.open")}</Link>
             <button className="btn btn-ghost" onClick={() => setSelected(null)}>{t("common.close")}</button>
