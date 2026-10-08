@@ -68,11 +68,17 @@ function CalendarPage() {
               <div key={d} className={`min-h-20 border-b border-r p-1 sm:min-h-24 sm:p-1.5 ${inMonth ? "" : "bg-background/70 text-muted-foreground"}`}>
                 <span className={`inline-grid h-6 w-6 place-items-center rounded-full text-xs font-bold ${d === today ? "bg-primary text-primary-foreground" : ""}`}>{fromKey(d).getDate()}</span>
                 <div className="mt-1 space-y-1">
-                  {list.slice(0, 3).map((i) => (
-                    <button key={i.id} onClick={() => setSelected(i)} className={`block w-full truncate rounded-sm px-1 py-0.5 text-left text-[11px] font-semibold ${TYPE_CLS[i.type]} ${i.done ? "line-through opacity-60" : ""}`}>
-                      {i.title}
-                    </button>
-                  ))}
+                  {list.slice(0, 3).map((i) => {
+                    const cls = i.kind === "planner" ? TYPE_CLS.planner : TYPE_CLS[i.type];
+                    const title = i.kind === "planner" ? i.item.title : i.title;
+                    const done = i.kind === "planner" ? i.item.status !== "PLANNED" : i.done;
+                    const time = i.kind === "planner" ? i.item.startTime : null;
+                    return (
+                      <button key={`${i.kind}-${i.kind === "planner" ? i.item.id : i.id}`} onClick={() => setSelected(i)} className={`block w-full truncate rounded-sm px-1 py-0.5 text-left text-[11px] font-semibold ${cls} ${done ? "line-through opacity-60" : ""}`}>
+                        {time ? `${time} ` : ""}{title}
+                      </button>
+                    );
+                  })}
                   {list.length > 3 && <span className="text-[11px] text-muted-foreground">+{list.length - 3}</span>}
                 </div>
               </div>
