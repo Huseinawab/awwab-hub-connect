@@ -25,13 +25,27 @@ function CalendarPage() {
   useLang();
   const state = useAppState();
   const [anchor, setAnchor] = useState(today);
-  const [selected, setSelected] = useState<DatedItem | null>(null);
+  const [selected, setSelected] = useState<CalEntry | null>(null);
   const month = periodFor("month", anchor);
-  const items = useMemo(() => datedItems(state), [state]);
+  const items = useMemo<CalEntry[]>(() => {
+    const goalish: CalEntry[] = datedItems(state).map((i) => ({ kind: "goalish", ...i }));
+    const planned: CalEntry[] = state.plannerItems
+      .filter((i) => i.date !== null)
+      .map((item) => ({ kind: "planner", item }));
+    return [...goalish, ...planned];
+  }, [state]);
   const gridStart = startOfWeek(month.start);
   const gridEnd = addDays(startOfWeek(month.end), 6);
   const days = datesBetween(gridStart, gridEnd);
-  const byDate = (d: string) => items.filter((i) => i.date === d);
+  const entryDate = (e: CalEntry) => (e.kind === "planner" ? e.item.date! : e.date);
+  const byDate = (d: string) =>
+    items
+      .filter((i) => entryDate(i) === d)
+      .sort((a, b) => {
+        const ta = a.kind === "planner" ? (a.item.startTime ?? "99:99") : "99:98";
+        const tb = b.kind === "planner" ? (b.item.startTime ?? "99:99") : "99:98";
+        return ta.localeCompare(tb);
+      });
   const next = upcoming(state, today, 6);
 
   return (
